@@ -19,7 +19,9 @@ public class ReactivePullTest {
                 .create(new Observable.OnSubscribe<Ackable>() {
                     @Override
                     public void call(Subscriber<? super Ackable> subscriber) {
-                        subscriber.setProducer(new PullProducer(subscriber));
+                        PullProducer p = new PullProducer(subscriber);
+                        subscriber.setProducer(p);
+                        System.out.println("init req: " + p.requested.get());
                     }
                 })
                 .observeOn(Schedulers.io())
@@ -43,10 +45,10 @@ public class ReactivePullTest {
 
                     @Override
                     public void onNext(final Ackable ackable) {
-                        System.out.println("get: " + ackable.msg);
-                        ackable.observe().subscribe(new Action1<Integer>() {
+                        System.out.println("get: " + ackable.getMsg());
+                        ackable.observe().subscribe(new Action1<Long>() {
                             @Override
-                            public void call(Integer integer) {
+                            public void call(Long msg) {
                                 // finished one, request one more
                                 request(1);
                             }
@@ -91,7 +93,7 @@ public class ReactivePullTest {
                         if (s.isUnsubscribed()) {
                             return;
                         }
-                        s.onNext(new Ackable(Long.toString(id.incrementAndGet())));
+                        s.onNext(new Ackable(id.incrementAndGet()));
                     }
                     requested.addAndGet(-r);
                 }
@@ -99,22 +101,4 @@ public class ReactivePullTest {
         }
     }
 
-    private static class Ackable {
-        private final ReplaySubject<Integer> subject = ReplaySubject.create();
-        private final String msg;
-        public Ackable(String msg) {
-            this.msg = msg;
-        }
-
-        public void ack() {
-            System.out.println("ack: " + msg);
-            // doesn't matter what value
-            subject.onNext(1);
-            subject.onCompleted();
-        }
-
-        public Observable<Integer> observe() {
-            return subject.take(1);
-        }
-    }
 }
