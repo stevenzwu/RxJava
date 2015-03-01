@@ -21,14 +21,17 @@ public class IterableMultiStreamTest {
         final int expectedCount = 500;
         CountDownLatch latch = new CountDownLatch(expectedCount);
         Subscription s = createStream(2, 4, 1).subscribe(new SlowSyncSubscriber(250, latch, 50, false));
-        // 2x4 processors, each can process 20 items/second
-        // so 500 items should take less than 4s
         long start = System.currentTimeMillis();
         boolean done = latch.await(10, TimeUnit.SECONDS);
         s.unsubscribe();
+        long duration = System.currentTimeMillis() - start;
         System.out.println(String.format("took %d ms to process %d msgs",
-                System.currentTimeMillis() - start, expectedCount - latch.getCount()));
+                duration, expectedCount - latch.getCount()));
         Assert.assertTrue(done);
+        // 2x4 processors, each can process 20 items/second
+        // so 500 items should take [3-4]s
+        Assert.assertTrue(duration > TimeUnit.SECONDS.toMillis(2));
+        Assert.assertTrue(duration < TimeUnit.SECONDS.toMillis(5));
     }
 
     @Test
@@ -42,9 +45,12 @@ public class IterableMultiStreamTest {
         long start = System.currentTimeMillis();
         boolean done = latch.await(10, TimeUnit.SECONDS);
         s.unsubscribe();
+        long duration = System.currentTimeMillis() - start;
         System.out.println(String.format("took %d ms to process %d msgs",
-                System.currentTimeMillis() - start, expectedCount - latch.getCount()));
+                duration, expectedCount - latch.getCount()));
         Assert.assertTrue(done);
+        // with async it should be less than 2s
+        Assert.assertTrue(duration < TimeUnit.SECONDS.toMillis(2));
     }
 
     private Observable<TestAckable> createStream(final int readerCount, final int processorCount, final long delay) {
