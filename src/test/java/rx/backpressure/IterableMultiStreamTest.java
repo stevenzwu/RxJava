@@ -53,6 +53,24 @@ public class IterableMultiStreamTest {
         Assert.assertTrue(duration < TimeUnit.SECONDS.toMillis(2));
     }
 
+    @Test
+    public void testSlowSources() throws Exception {
+        final int expectedCount = 500;
+        CountDownLatch latch = new CountDownLatch(expectedCount);
+        Subscription s = createStream(4, 1, 20).subscribe(new SlowSyncSubscriber(250, latch, 1, false));
+        long start = System.currentTimeMillis();
+        boolean done = latch.await(10, TimeUnit.SECONDS);
+        s.unsubscribe();
+        long duration = System.currentTimeMillis() - start;
+        System.out.println(String.format("took %d ms to process %d msgs",
+                duration, expectedCount - latch.getCount()));
+        Assert.assertTrue(done);
+        // 4 readers, each can process 50 items/second
+        // so 500 items should take [2-3]
+        Assert.assertTrue(duration > TimeUnit.SECONDS.toMillis(2));
+        Assert.assertTrue(duration < TimeUnit.SECONDS.toMillis(4));
+    }
+
     private Observable<TestAckable> createStream(final int readerCount, final int processorCount, final long delay) {
         final Random r = new Random();
         final Observable<Observable<TestAckable>> sourceStreams = Observable.create(new Observable.OnSubscribe<Observable<TestAckable>>() {
