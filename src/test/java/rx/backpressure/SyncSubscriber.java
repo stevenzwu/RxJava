@@ -1,21 +1,18 @@
 package rx.backpressure;
 
-import rx.Observable;
 import rx.Subscriber;
 import rx.functions.Action1;
-import rx.schedulers.Schedulers;
 
-import java.lang.Long;import java.lang.Override;import java.lang.String;import java.lang.System;import java.lang.Throwable;import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.lang.InterruptedException;import java.lang.Override;import java.lang.String;import java.lang.System;import java.lang.Thread;import java.lang.Throwable;import java.util.concurrent.CountDownLatch;
 
-class SlowAsyncSubscriber extends Subscriber<TestAckable> {
+class SyncSubscriber extends Subscriber<TestAckable> {
     private final long initRequested;
     private final CountDownLatch latch;
     private final long delay;
     private final boolean trace;
 
-    public SlowAsyncSubscriber(final long initRequested, final CountDownLatch latch,
-                               final long delay, final boolean trace) {
+    public SyncSubscriber(final long initRequested, final CountDownLatch latch,
+                          final long delay, final boolean trace) {
         this.initRequested = initRequested;
         this.latch = latch;
         this.delay = delay;
@@ -51,17 +48,15 @@ class SlowAsyncSubscriber extends Subscriber<TestAckable> {
                 request(1);
             }
         });
-        Observable.timer(delay, TimeUnit.MILLISECONDS)
-                .subscribeOn(Schedulers.computation())
-                .subscribe(new Action1<Long>() {
-                    @Override
-                    public void call(Long l) {
-                        if (trace) {
-                            System.out.println("ack: " + ackable.getMsg());
-                        }
-                        ackable.ack();
-                        latch.countDown();
-                    }
-                });
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException e) {
+            // ignore
+        }
+        if(trace) {
+            System.out.println("ack: " + ackable.getMsg());
+        }
+        ackable.ack();
+        latch.countDown();
     }
 }

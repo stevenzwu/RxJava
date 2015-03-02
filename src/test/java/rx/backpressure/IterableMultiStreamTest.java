@@ -20,7 +20,7 @@ public class IterableMultiStreamTest {
     public void testSlowSyncSubscriber() throws Exception {
         final int expectedCount = 500;
         CountDownLatch latch = new CountDownLatch(expectedCount);
-        Subscription s = createStream(2, 4, 1).subscribe(new SlowSyncSubscriber(250, latch, 50, false));
+        Subscription s = createStream(2, 4, 1).subscribe(new SyncSubscriber(250, latch, 50, false));
         long start = System.currentTimeMillis();
         boolean done = latch.await(10, TimeUnit.SECONDS);
         s.unsubscribe();
@@ -38,7 +38,7 @@ public class IterableMultiStreamTest {
     public void testSlowAsyncSubscriber() throws Exception {
         final int expectedCount = 1000;
         CountDownLatch latch = new CountDownLatch(expectedCount);
-        Subscription s = createStream(2, 4, 1).subscribe(new SlowAsyncSubscriber(500, latch, 50, false));
+        Subscription s = createStream(2, 4, 1).subscribe(new AsyncSubscriber(500, latch, 50, false));
         // 2x4 processors, each can process 20 items/second
         // so 500 items should take less than 4s
         // async should be even faster with large intial requested
@@ -54,10 +54,28 @@ public class IterableMultiStreamTest {
     }
 
     @Test
-    public void testSlowSources() throws Exception {
+    public void testSlowSourcesWithSyncSubscriber() throws Exception {
         final int expectedCount = 500;
         CountDownLatch latch = new CountDownLatch(expectedCount);
-        Subscription s = createStream(4, 1, 20).subscribe(new SlowSyncSubscriber(250, latch, 1, false));
+        Subscription s = createStream(4, 1, 20).subscribe(new SyncSubscriber(250, latch, 1, false));
+        long start = System.currentTimeMillis();
+        boolean done = latch.await(10, TimeUnit.SECONDS);
+        s.unsubscribe();
+        long duration = System.currentTimeMillis() - start;
+        System.out.println(String.format("took %d ms to process %d msgs",
+                duration, expectedCount - latch.getCount()));
+        Assert.assertTrue(done);
+        // 4 readers, each can process 50 items/second
+        // so 500 items should take [2-3]
+        Assert.assertTrue(duration > TimeUnit.SECONDS.toMillis(2));
+        Assert.assertTrue(duration < TimeUnit.SECONDS.toMillis(4));
+    }
+
+    @Test
+    public void testSlowSourcesWithAsyncSubscriber() throws Exception {
+        final int expectedCount = 500;
+        CountDownLatch latch = new CountDownLatch(expectedCount);
+        Subscription s = createStream(4, 1, 20).subscribe(new AsyncSubscriber(250, latch, 1, false));
         long start = System.currentTimeMillis();
         boolean done = latch.await(10, TimeUnit.SECONDS);
         s.unsubscribe();

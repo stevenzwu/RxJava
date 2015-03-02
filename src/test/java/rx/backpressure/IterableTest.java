@@ -25,7 +25,7 @@ public class IterableTest {
                 .from(new TestIterable(0, 1))
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(Schedulers.newThread())
-                .subscribe(new SlowSyncSubscriber(250, latch, 5, false));
+                .subscribe(new SyncSubscriber(250, latch, 5, false));
 
         long start = System.currentTimeMillis();
         boolean done = latch.await(10, TimeUnit.SECONDS);
@@ -43,7 +43,7 @@ public class IterableTest {
                 .from(new TestIterable(0, 1))
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(Schedulers.newThread())
-                .subscribe(new SlowAsyncSubscriber(500, latch, 5, false));
+                .subscribe(new AsyncSubscriber(500, latch, 5, false));
 
         long start = System.currentTimeMillis();
         boolean done = latch.await(10, TimeUnit.SECONDS);
